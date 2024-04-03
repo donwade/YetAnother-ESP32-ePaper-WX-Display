@@ -133,7 +133,13 @@ void GxEPD2_EPD::_reset()
   }
 }
 
-#define Debug printf
+//#define CHATTY 1
+static int quiet(const char *, ...) { return 0;}
+#ifdef CHATTY
+static int (*Debug)(const char*, ...) = printf;
+#else
+static int (*Debug)(const char*, ...) = quiet ;
+#endif
 
 #define MAX_VCC 3.1
 #define VOLT2BINARY(x)  ((x) / MAX_VCC * 4096.)
@@ -148,7 +154,7 @@ void GxEPD2_EPD::_waitWhileBusy(const char* caller_fn, uint16_t line)
     static bool bInit=false;
 	static uint16_t peak_hi= 0, peak_lo = 0xFFFF, slice = VOLT2BINARY(.6);
 
-	printf("%s called from %s:%d\n", __FUNCTION__, caller_fn, line);
+	//Debug("%s called from %s:%d\n", __FUNCTION__, caller_fn, line);
 	if (bInit == false)
 	{
 	    pinMode(_busy, INPUT);    // set data/command pin to output mode
@@ -165,8 +171,7 @@ void GxEPD2_EPD::_waitWhileBusy(const char* caller_fn, uint16_t line)
 	        p2p = (peak_hi - peak_lo) / 4;
 	        slice = peak_lo + p2p;   // noise is on the first half, move lower
 
-	        Debug("moved hi = %3.2fv            slice = %3.2f\n",
-	        BINARY2VOLT(peak_hi), BINARY2VOLT(slice));
+	        //Debug("moved hi = %3.2fv            slice = %3.2f\n", BINARY2VOLT(peak_hi), BINARY2VOLT(slice));
 	        delay(500);
 	    }
 
@@ -176,8 +181,7 @@ void GxEPD2_EPD::_waitWhileBusy(const char* caller_fn, uint16_t line)
 	        p2p = (peak_hi - peak_lo) / 4;
 	        slice = peak_lo + p2p;   // noise is on the first half, move lower
 
-	        Debug("moved =          lo =%3.2fv  slice = %3.2f\n",
-	        BINARY2VOLT(peak_lo), BINARY2VOLT(slice));
+	        //Debug("moved =          lo =%3.2fv  slice = %3.2f\n", BINARY2VOLT(peak_lo), BINARY2VOLT(slice));
 	        delay(500);
 	    }
 		#if defined(ESP8266) || defined(ESP32)
@@ -185,7 +189,7 @@ void GxEPD2_EPD::_waitWhileBusy(const char* caller_fn, uint16_t line)
 		#endif
 	} while (adc < slice);
 
-	printf("%s done... called from %s:%d\n", __FUNCTION__, caller_fn, line);
+	Debug("%s done... called from %s:%d\n", __FUNCTION__, caller_fn, line);
 
 	/*
 	printf("peak_lo = %3.2fv hi = %3.2fv adc > slice (%3.2fv > %3.2fv)\n",

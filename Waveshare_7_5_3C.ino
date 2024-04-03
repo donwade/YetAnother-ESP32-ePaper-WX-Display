@@ -21,7 +21,7 @@
 #include <ArduinoJson.h>              // https://github.com/bblanchon/ArduinoJson needs version v6 or above
 #include <WiFi.h>                     // Built-in
 #include "time.h"                     // Built-in
-#include <SPI.h>                      // Built-in 
+#include <SPI.h>                      // Built-in
 #define  ENABLE_GxEPD2_display 1
 #include <GxEPD2_BW.h>
 #include <GxEPD2_3C.h>
@@ -42,6 +42,7 @@
 
 enum alignment {LEFT, RIGHT, CENTER};
 
+#if 0
 // Connections for e.g. LOLIN D32
 static const uint8_t EPD_BUSY = 4;  // to EPD BUSY
 static const uint8_t EPD_CS   = 5;  // to EPD CS
@@ -50,15 +51,17 @@ static const uint8_t EPD_DC   = 17; // to EPD DC
 static const uint8_t EPD_SCK  = 18; // to EPD CLK
 static const uint8_t EPD_MISO = 19; // Master-In Slave-Out not used, as no data from display
 static const uint8_t EPD_MOSI = 23; // to EPD DIN
-
+#else
 // Connections for e.g. Waveshare ESP32 e-Paper Driver Board
-//static const uint8_t EPD_BUSY = 25;
-//static const uint8_t EPD_CS   = 15;
-//static const uint8_t EPD_RST  = 26;
-//static const uint8_t EPD_DC   = 27;
-//static const uint8_t EPD_SCK  = 13;
-//static const uint8_t EPD_MISO = 12; // Master-In Slave-Out not used, as no data from display
-//static const uint8_t EPD_MOSI = 14;
+static const uint8_t EPD_BUSY = 14; //25;
+static const uint8_t EPD_CS   = 13; //15;
+static const uint8_t EPD_RST  = 21; //26;
+static const uint8_t EPD_DC   = 22; //27;
+static const uint8_t EPD_SCK  = 18; //13;
+static const uint8_t EPD_MISO = 12; // Master-In Slave-Out not used, as no data from display
+static const uint8_t EPD_MOSI = 23;
+static const uint8_t EPD_PWR  = 26;
+#endif
 
 //use GxEPD_BLACK or GxEPD_WHITE or GxEPD_RED or GxEPD_YELLOW depending on display type
 //GxEPD2_3C<GxEPD2_750c, GxEPD2_750c::HEIGHT> display(GxEPD2_750c(/*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16, /*BUSY=*/ 4)); // GDEW075Z09 640x384, UC8179 (IL0371)
@@ -113,6 +116,9 @@ int  SleepTime     = 23; // Sleep after (23+1) 00:00 to save battery power
 void setup() {
   StartTime = millis();
   Serial.begin(115200);
+  pinMode(EPD_PWR, OUTPUT);
+  digitalWrite(EPD_PWR,1);
+
   if (StartWiFi() == WL_CONNECTED && SetupTime() == true) {
     if (CurrentHour >= WakeupTime && CurrentHour <= SleepTime) {
       InitialiseDisplay(); // Give screen time to initialise by getting weather data!
@@ -149,6 +155,9 @@ void BeginSleep() {
   Serial.println("Entering " + String(SleepTimer) + "-secs of sleep time");
   Serial.println("Awake for : " + String((millis() - StartTime) / 1000.0, 3) + "-secs");
   Serial.println("Starting deep-sleep period...");
+
+  digitalWrite(EPD_PWR,0); // drop power to board
+
   esp_deep_sleep_start();      // Sleep for e.g. 30 minutes
 }
 //#########################################################################################
@@ -879,7 +888,7 @@ void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float
     if (barchart_mode) {
       x2 = x_pos + gx * (gwidth / readings) + 2;
       display.fillRect(x2, y2, (gwidth / readings) - 2, y_pos + gheight - y2 + 2, GxEPD_BLACK);
-    } 
+    }
     else
     {
       x2 = x_pos + gx * gwidth / (readings - 1) + 1; // max_readings is the global variable that sets the maximum data that can be plotted
