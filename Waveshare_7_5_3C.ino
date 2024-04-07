@@ -51,8 +51,8 @@ static const uint8_t EPD_DC   = 17; // to EPD DC
 static const uint8_t EPD_SCK  = 18; // to EPD CLK
 static const uint8_t EPD_MISO = 19; // Master-In Slave-Out not used, as no data from display
 static const uint8_t EPD_MOSI = 23; // to EPD DIN
-#else
-// Connections for e.g. Waveshare ESP32 e-Paper Driver Board
+
+# legacy connection to breakout board
 static const uint8_t EPD_BUSY = 14; //25;
 static const uint8_t EPD_CS   = 13; //15;
 static const uint8_t EPD_RST  = 21; //26;
@@ -61,6 +61,17 @@ static const uint8_t EPD_SCK  = 18; //13;
 static const uint8_t EPD_MISO = 12; // Master-In Slave-Out not used, as no data from display
 static const uint8_t EPD_MOSI = 23;
 static const uint8_t EPD_PWR  = 26;
+#
+#else
+// Connections for e.g. Waveshare ESP32 e-Paper Driver Board
+static const uint8_t EPD_BUSY = 25;
+static const uint8_t EPD_CS   = 15;
+static const uint8_t EPD_RST  = 26;
+static const uint8_t EPD_DC   = 27;
+static const uint8_t EPD_SCK  = 13;
+static const uint8_t EPD_MISO = 5; // not "used" Master-In Slave-Out not used, as no data from display
+static const uint8_t EPD_MOSI = 14;
+//static const uint8_t EPD_PWR  = 26;
 #endif
 
 //use GxEPD_BLACK or GxEPD_WHITE or GxEPD_RED or GxEPD_YELLOW depending on display type
@@ -111,13 +122,27 @@ float snow_readings[max_readings]        = {0};
 long SleepDuration = 30; // Sleep time in minutes, aligned to the nearest minute boundary, so if 30 will always update at 00 or 30 past the hour
 int  WakeupTime    = 7;  // Don't wakeup until after 07:00 to save battery power
 int  SleepTime     = 23; // Sleep after (23+1) 00:00 to save battery power
-
+#define LED_BUILTIN 2
 //#########################################################################################
 void setup() {
   StartTime = millis();
   Serial.begin(115200);
-  pinMode(EPD_PWR, OUTPUT);
-  digitalWrite(EPD_PWR,1);
+  //pinMode(EPD_PWR, OUTPUT);
+  //digitalWrite(EPD_PWR,1);
+
+#ifdef LED_BUILTIN
+  pinMode(LED_BUILTIN, OUTPUT); // If it's On, turn it off and some boards use GPIO-5 for SPI-SS, which remains low after screen use
+  bool bON = false;
+  for (int i = 0; i < 9; i++)
+  {
+    digitalWrite(LED_BUILTIN, bON);
+    delay(500);
+    printf("bLed (%d) is %d \n", LED_BUILTIN, bON);
+    bON = !bON;
+  }
+#else
+  #error WTF?
+#endif
 
   if (StartWiFi() == WL_CONNECTED && SetupTime() == true) {
     if (CurrentHour >= WakeupTime && CurrentHour <= SleepTime) {
@@ -145,18 +170,21 @@ void loop() { // this will never run!
 }
 //#########################################################################################
 void BeginSleep() {
-  display.powerOff();
+
   long SleepTimer = (SleepDuration * 60 - ((CurrentMin % SleepDuration) * 60 + CurrentSec)); //Some ESP32 are too fast to maintain accurate time
-  esp_sleep_enable_timer_wakeup((SleepTimer + 20) * 1000000LL); // Added extra 20-secs of sleep to allow for slow ESP32 RTC timers
-#ifdef BUILTIN_LED
-  pinMode(BUILTIN_LED, INPUT); // If it's On, turn it off and some boards use GPIO-5 for SPI-SS, which remains low after screen use
-  digitalWrite(BUILTIN_LED, HIGH);
+
+#ifdef LED_BUILTIN
+  digitalWrite(LED_BUILTIN, HIGH);
 #endif
+  delay(5000);
   Serial.println("Entering " + String(SleepTimer) + "-secs of sleep time");
   Serial.println("Awake for : " + String((millis() - StartTime) / 1000.0, 3) + "-secs");
   Serial.println("Starting deep-sleep period...");
 
-  digitalWrite(EPD_PWR,0); // drop power to board
+  display.powerOff();
+  esp_sleep_enable_timer_wakeup((SleepTimer + 20) * 1000000LL); // Added extra 20-secs of sleep to allow for slow ESP32 RTC timers
+
+  //digitalWrite(EPD_PWR,0); // drop power to board
 
   esp_deep_sleep_start();      // Sleep for e.g. 30 minutes
 }
