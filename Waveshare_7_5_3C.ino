@@ -71,7 +71,7 @@ static const uint8_t EPD_DC   = 27;
 static const uint8_t EPD_SCK  = 13;
 static const uint8_t EPD_MISO = 5; // not "used" Master-In Slave-Out not used, as no data from display
 static const uint8_t EPD_MOSI = 14;
-//static const uint8_t EPD_PWR  = 26;
+static const uint8_t EPD_PWR  = 00;// does not exist on a waveshare booad
 #endif
 
 //use GxEPD_BLACK or GxEPD_WHITE or GxEPD_RED or GxEPD_YELLOW depending on display type
@@ -127,8 +127,11 @@ int  SleepTime     = 23; // Sleep after (23+1) 00:00 to save battery power
 void setup() {
   StartTime = millis();
   Serial.begin(115200);
-  //pinMode(EPD_PWR, OUTPUT);
-  //digitalWrite(EPD_PWR,1);
+  if (EPD_PWR)
+  {
+    pinMode(EPD_PWR, OUTPUT);
+    digitalWrite(EPD_PWR,1);
+  }
 
 #ifdef LED_BUILTIN
   pinMode(LED_BUILTIN, OUTPUT); // If it's On, turn it off and some boards use GPIO-5 for SPI-SS, which remains low after screen use
@@ -184,7 +187,7 @@ void BeginSleep() {
   display.powerOff();
   esp_sleep_enable_timer_wakeup((SleepTimer + 20) * 1000000LL); // Added extra 20-secs of sleep to allow for slow ESP32 RTC timers
 
-  //digitalWrite(EPD_PWR,0); // drop power to board
+  if (EPD_PWR) digitalWrite(EPD_PWR,0); // drop power to board
 
   esp_deep_sleep_start();      // Sleep for e.g. 30 minutes
 }
